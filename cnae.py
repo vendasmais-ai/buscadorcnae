@@ -114,7 +114,7 @@ if busca and not resultado.empty:
 
             total_filtro = cursor.fetchone()[0]
 
-            # 🎯 MENSAGEM FINAL (ORDEM CORRETA)
+            # 🎯 MENSAGEM FINAL (ORDEM CORRIGIDA)
             if total_filtro > 0:
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -127,14 +127,15 @@ if busca and not resultado.empty:
                 )
             else:
                 texto_msg = (
-                    f"Não existem empresas com esse CNAE com esses filtros.\n\n"
-                    f"Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
-                    f"Vou preparar uma lista qualificada para você.\n"
-                    f"Podemos filtrar por região, cidade ou contatos válidos.\n\n"
                     f"CNAE: {cnae_selecionado}\n"
                     f"CEP informado: {cep}\n"
                     f"DDD informado: {ddd_preferencia}\n"
-                    f"WhatsApp Cliente: {seu_whatsapp}"
+                    f"WhatsApp Cliente: {seu_whatsapp}\n\n"
+
+                    f"Não existem empresas com esse CNAE com esses filtros.\n\n"
+                    f"Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
+                    f"Vou preparar uma lista qualificada para você.\n"
+                    f"Podemos filtrar por região, cidade ou contatos válidos."
                 )
 
             cursor.close()
