@@ -88,7 +88,7 @@ if busca and not resultado.empty:
             st.warning("DDD inválido.")
         
         else:
-            # 🔧 CONEXÃO (SEU MYSQL LOCAL)
+            # 🔧 CONEXÃO MYSQL LOCAL
             db = mysql.connector.connect(
                 host="127.0.0.1",
                 user="root",
@@ -114,7 +114,7 @@ if busca and not resultado.empty:
 
             total_filtro = cursor.fetchone()[0]
 
-            # 🎯 MENSAGEM FINAL (SEM ERRO DE CARACTER)
+            # 🎯 MENSAGEM FINAL (ORDEM CORRETA)
             if total_filtro > 0:
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -140,7 +140,7 @@ if busca and not resultado.empty:
             cursor.close()
             db.close()
 
-            # 🔗 LINK WHATSAPP (SEM BUG)
+            # 🔗 LINK WHATSAPP
             msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
             link_whatsapp = f"https://wa.me/5512981779669?text={msg_codificada}"
 
