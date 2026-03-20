@@ -88,7 +88,7 @@ if busca and not resultado.empty:
             st.warning("DDD inválido.")
         
         else:
-            # 🔧 CONEXÃO (FUNCIONA LOCAL)
+            # 🔧 CONEXÃO (SEU MYSQL LOCAL)
             db = mysql.connector.connect(
                 host="127.0.0.1",
                 user="root",
@@ -114,40 +114,40 @@ if busca and not resultado.empty:
 
             total_filtro = cursor.fetchone()[0]
 
-            # 🎯 MENSAGEM FINAL
+            # 🎯 MENSAGEM FINAL (SEM ERRO DE CARACTER)
             if total_filtro > 0:
                 texto_msg = (
-                    f"*Novo Interesse de CNAE*\n\n"
-                    f"*CNAE:* {cnae_selecionado}\n"
-                    f"*CEP:* {cep}\n"
-                    f"*DDD:* {ddd_preferencia}\n"
-                    f"*Resultados encontrados:* {total_filtro}\n"
-                    f"*Deseja:* {preferencia}\n"
-                    f"*WhatsApp Cliente:* {seu_whatsapp}"
+                    f"Novo Interesse de CNAE\n\n"
+                    f"CNAE: {cnae_selecionado}\n"
+                    f"CEP: {cep}\n"
+                    f"DDD: {ddd_preferencia}\n"
+                    f"Resultados encontrados: {total_filtro}\n"
+                    f"Deseja: {preferencia}\n"
+                    f"WhatsApp Cliente: {seu_whatsapp}"
                 )
             else:
                 texto_msg = (
-                    f"❌ Não existem empresas com esse CNAE com esses filtros.\n\n"
-                    f"👉 Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
-                    f"💡 Vou preparar uma lista qualificada para você.\n"
+                    f"Não existem empresas com esse CNAE com esses filtros.\n\n"
+                    f"Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
+                    f"Vou preparar uma lista qualificada para você.\n"
                     f"Podemos filtrar por região, cidade ou contatos válidos.\n\n"
-                    f"*CNAE:* {cnae_selecionado}\n"
-                    f"*CEP informado:* {cep}\n"
-                    f"*DDD informado:* {ddd_preferencia}\n"
-                    f"*WhatsApp Cliente:* {seu_whatsapp}"
+                    f"CNAE: {cnae_selecionado}\n"
+                    f"CEP informado: {cep}\n"
+                    f"DDD informado: {ddd_preferencia}\n"
+                    f"WhatsApp Cliente: {seu_whatsapp}"
                 )
 
             cursor.close()
             db.close()
 
-            # 🔗 LINK WHATSAPP (CORRIGIDO UTF-8)
+            # 🔗 LINK WHATSAPP (SEM BUG)
             msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
             link_whatsapp = f"https://wa.me/5512981779669?text={msg_codificada}"
 
             st.markdown(f"""
                 <a href="{link_whatsapp}" target="_blank">
                     <button style="background-color: #25D366; color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px;">
-                        ✅ CLIQUE AQUI PARA ENVIAR NO WHATSAPP
+                        CLIQUE AQUI PARA ENVIAR NO WHATSAPP
                     </button>
                 </a>
             """, unsafe_allow_html=True)
