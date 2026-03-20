@@ -1,12 +1,26 @@
 import streamlit as st
-import urllib
 import pandas as pd
+import urllib
 
-# --- PARTE 1: BUSCA DE CNAE (exemplo inicial para evitar NameError) ---
-# No seu fluxo real, essa parte deve vir da busca que você já tem implementada.
-busca = True
-resultado = pd.DataFrame({"CNAE": ["1234-5/00"]})  # Exemplo de resultado
-cnae_selecionado = resultado["CNAE"].iloc[0]
+# --- PARTE 1: BUSCA DE CNAE ---
+st.title("🔎 Buscador de CNAE")
+
+# Campo de busca
+busca = st.text_input("Digite o CNAE ou descrição para buscar:")
+
+# Simulação de resultado da busca (substitua pela sua lógica real)
+if busca:
+    # Exemplo: dataframe com resultados
+    resultado = pd.DataFrame({
+        "CNAE": ["1234-5/00", "5678-9/10"],
+        "Descrição": ["Comércio varejista", "Serviços de informática"]
+    })
+
+    # Seleção do CNAE
+    cnae_selecionado = st.selectbox("Selecione o CNAE encontrado:", resultado["CNAE"])
+else:
+    resultado = pd.DataFrame()
+    cnae_selecionado = ""
 
 # --- PARTE 2: DADOS DO CLIENTE ---
 if busca and not resultado.empty:
@@ -42,7 +56,7 @@ if busca and not resultado.empty:
                 f"*CNAE:* {cnae_selecionado}\n"
                 f"*CEP:* {cep}\n"
                 f"*Deseja:* {preferencia}\n"
-                f"*DDD Preferência:* {ddd_preferencia}\n"  # ✅ acrescentado
+                f"*DDD Preferência:* {ddd_preferencia}\n"
                 f"*WhatsApp Cliente:* {seu_whatsapp}"
             )
             
