@@ -1,11 +1,5 @@
 import streamlit as st
 import urllib
-import pandas as pd
-
-# Defina valores iniciais para evitar NameError
-busca = False
-resultado = pd.DataFrame()  # dataframe vazio
-cnae_selecionado = ""       # valor inicial
 
 # --- PARTE 2: DADOS DO CLIENTE ---
 if busca and not resultado.empty:
@@ -41,7 +35,7 @@ if busca and not resultado.empty:
                 f"*CNAE:* {cnae_selecionado}\n"
                 f"*CEP:* {cep}\n"
                 f"*Deseja:* {preferencia}\n"
-                f"*DDD Preferência:* {ddd_preferencia}\n"
+                f"*DDD Preferência:* {ddd_preferencia}\n"  # ✅ acrescentado
                 f"*WhatsApp Cliente:* {seu_whatsapp}"
             )
             
