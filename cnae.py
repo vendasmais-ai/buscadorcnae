@@ -6,7 +6,7 @@ import urllib
 st.title("🔎 Buscador de CNAE")
 
 # Campo de busca
-busca = st.text_input("Digite o CNAE ou descrição para buscar:")
+busca = st.text_input("Digite o CNAE ou palavras ou descrição para a busca:")
 
 # Simulação de resultado da busca (substitua pela sua lógica real)
 if busca:
@@ -27,7 +27,7 @@ if busca and not resultado.empty:
     st.divider()
     st.subheader("📋 Informações Adicionais")
     
-    cep = st.text_input("Digite seu CEP (apenas números):", max_chars=8)
+    cep = st.text_input("Digite CEP desejado (apenas números):", max_chars=8)
     cep = "".join(filter(str.isdigit, cep))
     
     preferencia = st.radio(
@@ -39,7 +39,7 @@ if busca and not resultado.empty:
     seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
 
     # ✅ Novo campo para DDD preferido
-    ddd_preferencia = st.text_input("Digite o DDD da região que deseja receber contatos (ex: 11):")
+    ddd_preferencia = st.text_input("Digite o DDD da região que deseja receber os leads (ex: 11):")
     ddd_preferencia = "".join(filter(str.isdigit, ddd_preferencia))
 
     # --- PARTE 3: ENVIO ---
