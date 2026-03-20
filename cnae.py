@@ -1,5 +1,11 @@
 import streamlit as st
 import urllib
+import pandas as pd
+
+# Defina valores iniciais para evitar NameError
+busca = False
+resultado = pd.DataFrame()  # dataframe vazio
+cnae_selecionado = ""       # valor inicial
 
 # --- PARTE 2: DADOS DO CLIENTE ---
 if busca and not resultado.empty:
@@ -17,7 +23,7 @@ if busca and not resultado.empty:
     seu_whatsapp = st.text_input("Seu WhatsApp com DDD (ex: 11999999999):")
     seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
 
-    # Novo campo para DDD preferido
+    # ✅ Novo campo para DDD preferido
     ddd_preferencia = st.text_input("Digite o DDD da região que deseja receber contatos (ex: 11):")
     ddd_preferencia = "".join(filter(str.isdigit, ddd_preferencia))
 
