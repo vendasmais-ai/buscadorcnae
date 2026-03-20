@@ -2,6 +2,15 @@ import streamlit as st
 import pandas as pd
 import urllib
 import mysql.connector
+import unicodedata
+
+# 🔧 FUNÇÃO PARA NORMALIZAR TEXTO (remove acento)
+def normalizar(texto):
+    texto = texto.lower().strip()
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
 
 # --- PARTE 1: BUSCA DE CNAE ---
 st.title("🔎 Buscador de CNAE")
@@ -9,7 +18,7 @@ st.title("🔎 Buscador de CNAE")
 busca = st.text_input("Digite o CNAE ou palavras ou descrição para a busca:")
 
 if busca:
-    busca_limpa = busca.lower().strip()
+    busca_limpa = normalizar(busca)
 
     # 🔥 BASE DE CNAE
     tabela_cnae = [
@@ -17,11 +26,12 @@ if busca:
         {"cnae": "6201-5/01", "desc": "Desenvolvimento de programas de computador"},
         {"cnae": "4711-3/02", "desc": "Supermercados"},
         {"cnae": "5611-2/01", "desc": "Restaurantes"},
+        {"cnae": "4619-2/00", "desc": "Representantes comerciais e agentes do comércio de mercadorias em geral não especializado"},
     ]
 
     resultados_filtrados = [
         item for item in tabela_cnae
-        if busca_limpa in item["desc"].lower()
+        if busca_limpa in normalizar(item["desc"])
         or busca_limpa in "".join(filter(str.isdigit, item["cnae"]))
     ]
 
