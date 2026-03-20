@@ -1,5 +1,12 @@
 import streamlit as st
 import urllib
+import pandas as pd
+
+# --- PARTE 1: BUSCA DE CNAE (exemplo inicial para evitar NameError) ---
+# No seu fluxo real, essa parte deve vir da busca que você já tem implementada.
+busca = True
+resultado = pd.DataFrame({"CNAE": ["1234-5/00"]})  # Exemplo de resultado
+cnae_selecionado = resultado["CNAE"].iloc[0]
 
 # --- PARTE 2: DADOS DO CLIENTE ---
 if busca and not resultado.empty:
