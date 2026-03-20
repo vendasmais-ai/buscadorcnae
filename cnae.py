@@ -88,7 +88,7 @@ if busca and not resultado.empty:
             st.warning("DDD inválido.")
         
         else:
-            # 🔧 CONEXÃO
+            # 🔧 CONEXÃO (FUNCIONA LOCAL)
             db = mysql.connector.connect(
                 host="127.0.0.1",
                 user="root",
@@ -127,8 +127,10 @@ if busca and not resultado.empty:
                 )
             else:
                 texto_msg = (
-                    f"❌ Não existem empresas com esse CNAE com esses filtros.\n"
+                    f"❌ Não existem empresas com esse CNAE com esses filtros.\n\n"
                     f"👉 Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
+                    f"💡 Vou preparar uma lista qualificada para você.\n"
+                    f"Podemos filtrar por região, cidade ou contatos válidos.\n\n"
                     f"*CNAE:* {cnae_selecionado}\n"
                     f"*CEP informado:* {cep}\n"
                     f"*DDD informado:* {ddd_preferencia}\n"
@@ -138,8 +140,8 @@ if busca and not resultado.empty:
             cursor.close()
             db.close()
 
-            # 🔗 LINK WHATSAPP
-            msg_codificada = urllib.parse.quote(texto_msg)
+            # 🔗 LINK WHATSAPP (CORRIGIDO UTF-8)
+            msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
             link_whatsapp = f"https://wa.me/5512981779669?text={msg_codificada}"
 
             st.markdown(f"""
