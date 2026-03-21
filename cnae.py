@@ -130,20 +130,11 @@ if busca and not resultado.empty:
                 df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
 
                 st.success(f"Foram encontradas {total_filtro} empresas com os filtros aplicados.")
-                st.dataframe(df_empresas)
+                # st.dataframe(df_empresas.head(10))  # mostra só prévia
 
-                # Exporta para CSV externo
+                # Exporta para CSV externo (apenas local, sem download)
                 df_empresas.to_csv("empresas_filtradas.csv", index=False, encoding="utf-8-sig")
-                st.info("Arquivo 'empresas_filtradas.csv' foi salvo com os resultados.")
-
-                # Botão para download direto
-                csv_bytes = df_empresas.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
-                st.download_button(
-                    label="📥 Baixar lista em CSV",
-                    data=csv_bytes,
-                    file_name="empresas_filtradas.csv",
-                    mime="text/csv"
-                )
+                st.info("Arquivo 'empresas_filtradas.csv' foi salvo localmente com os resultados.")
 
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -172,20 +163,11 @@ if busca and not resultado.empty:
                 df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
 
                 st.success(f"Foram encontradas {total_brasil} empresas no Brasil com esse CNAE.")
-                st.dataframe(df_empresas)
+                # st.dataframe(df_empresas.head(10))  # mostra só prévia
 
-                # Exporta para CSV externo
+                # Exporta para CSV externo (apenas local, sem download)
                 df_empresas.to_csv("empresas_brasil.csv", index=False, encoding="utf-8-sig")
-                st.info("Arquivo 'empresas_brasil.csv' foi salvo com os resultados.")
-
-                # Botão para download direto
-                csv_bytes = df_empresas.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
-                st.download_button(
-                    label="📥 Baixar lista completa em CSV",
-                    data=csv_bytes,
-                    file_name="empresas_brasil.csv",
-                    mime="text/csv"
-                )
+                st.info("Arquivo 'empresas_brasil.csv' foi salvo localmente com os resultados.")
 
                 texto_msg = (
                     f"CNAE: {cnae_selecionado}\n"
