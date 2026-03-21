@@ -4,6 +4,17 @@ import urllib
 import mysql.connector
 import unicodedata
 
+# --- MOSTRAR LISTA DE CNAEs NO INÍCIO ---
+try:
+    # Lê o arquivo ListaCNAES.txt (espera que esteja no formato: numero;descricao)
+    df_lista = pd.read_csv("ListaCNAES.txt", sep=";", header=None, names=["CNAE", "Descrição"])
+    
+    st.subheader("📑 Lista de CNAEs disponíveis")
+    st.dataframe(df_lista)  # mostra tabela interativa
+except Exception as e:
+    st.warning("Não foi possível carregar a lista de CNAEs. Verifique se o arquivo ListaCNAES.txt está na pasta.")
+
+
 # 🔧 FUNÇÃO PARA NORMALIZAR TEXTO (remove acento)
 def normalizar(texto):
     texto = texto.lower().strip()
