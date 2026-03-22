@@ -48,11 +48,39 @@ if st.button("Finalizar e Gerar Mensagem"):
         )
         cursor = db.cursor()
 
-        # --- QUERY DINÂMICA ---
+        # --- QUERY DINÂMICA COM TODAS AS 30 COLUNAS ---
         query = """
-            SELECT `Column 5` AS Nome, `Column 18` AS CEP, `Column 21` AS DDD, 
-                   `Column 22` AS Telefone, `Column 23` AS DDD2, `Column 24` AS Telefone2, 
-                   `Column 25` AS Email
+            SELECT 
+                `Column 0`  AS cnpj,
+                `Column 1`  AS matriz_filial,
+                `Column 2`  AS situacao,
+                `Column 3`  AS motivo_situacao,
+                `Column 4`  AS nome_fantasia,
+                `Column 5`  AS razao_social,
+                `Column 6`  AS data_abertura,
+                `Column 7`  AS porte,
+                `Column 8`  AS opcao_simples,
+                `Column 9`  AS data_opcao_simples,
+                `Column 10` AS data_exclusao_simples,
+                `Column 11` AS cnae_principal,
+                `Column 12` AS cnae_secundario,
+                `Column 13` AS tipo_logradouro,
+                `Column 14` AS logradouro,
+                `Column 15` AS numero,
+                `Column 16` AS complemento,
+                `Column 17` AS bairro,
+                `Column 18` AS cep,
+                `Column 19` AS uf,
+                `Column 20` AS municipio,
+                `Column 21` AS ddd1,
+                `Column 22` AS telefone1,
+                `Column 23` AS ddd2,
+                `Column 24` AS telefone2,
+                `Column 25` AS email,
+                `Column 26` AS situacao_especial,
+                `Column 27` AS data_situacao_especial,
+                `Column 28` AS capital_social,
+                `Column 29` AS responsavel
             FROM estabelecimentos
             WHERE 1=1
         """
@@ -68,7 +96,7 @@ if st.button("Finalizar e Gerar Mensagem"):
 
         if cep:
             query += " AND `Column 18` LIKE %s"
-            params.append(cep + "%")   # pega todos os CEPs que começam com o prefixo
+            params.append(cep + "%")
 
         if ddd_preferencia:
             query += " AND (TRIM(`Column 21`) LIKE %s OR TRIM(`Column 23`) LIKE %s)"
@@ -76,7 +104,15 @@ if st.button("Finalizar e Gerar Mensagem"):
 
         cursor.execute(query, tuple(params))
         lista_empresas = cursor.fetchall()
-        colunas = ["Nome", "CEP", "DDD", "Telefone", "DDD2", "Telefone2", "Email"]
+
+        colunas = [
+            "cnpj","matriz_filial","situacao","motivo_situacao","nome_fantasia","razao_social",
+            "data_abertura","porte","opcao_simples","data_opcao_simples","data_exclusao_simples",
+            "cnae_principal","cnae_secundario","tipo_logradouro","logradouro","numero","complemento",
+            "bairro","cep","uf","municipio","ddd1","telefone1","ddd2","telefone2","email",
+            "situacao_especial","data_situacao_especial","capital_social","responsavel"
+        ]
+
         df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
 
         total_filtro = len(df_empresas)
@@ -84,7 +120,6 @@ if st.button("Finalizar e Gerar Mensagem"):
         if total_filtro > 0:
             st.success(f"Foram encontradas {total_filtro} empresas com os filtros aplicados.")
 
-            # Nome do arquivo com filtros usados
             filtros_nome = ""
             if cnae_selecionado:
                 filtros_nome += f"{cnae_selecionado}_"
