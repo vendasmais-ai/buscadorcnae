@@ -25,9 +25,9 @@ st.title("🔎 Buscador de Empresas")
 
 cnae_selecionado = st.text_input("Digite o CNAE (apenas números):")
 atividade = st.text_input("Digite a atividade (palavras):")
-cep = st.text_input("Digite CEP desejado (apenas números ou início):")
+cep = st.text_input("Digite CEP desejado (prefixo, ex: 122):")
 cep = "".join(filter(str.isdigit, cep))
-ddd_preferencia = st.text_input("DDD da região (ex: 11):")
+ddd_preferencia = st.text_input("DDD da região (ex: 12):")
 ddd_preferencia = "".join(filter(str.isdigit, ddd_preferencia))
 
 preferencia = st.radio("O que deseja receber?", ("Apenas E-mails", "Apenas Telefones", "E-mails + Telefones"))
@@ -68,7 +68,7 @@ if st.button("Finalizar e Gerar Mensagem"):
 
         if cep:
             query += " AND `Column 18` LIKE %s"
-            params.append("%" + cep + "%")   # mais flexível
+            params.append(cep + "%")   # pega todos os CEPs que começam com o prefixo
 
         if ddd_preferencia:
             query += " AND (TRIM(`Column 21`) LIKE %s OR TRIM(`Column 23`) LIKE %s)"
