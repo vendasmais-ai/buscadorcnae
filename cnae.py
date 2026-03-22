@@ -71,8 +71,8 @@ if st.button("Finalizar e Gerar Mensagem"):
             params.append("%" + cep + "%")   # mais flexível
 
         if ddd_preferencia:
-            query += " AND (TRIM(`Column 21`) = %s OR TRIM(`Column 23`) = %s)"
-            params.extend([ddd_preferencia, ddd_preferencia])
+            query += " AND (TRIM(`Column 21`) LIKE %s OR TRIM(`Column 23`) LIKE %s)"
+            params.extend(["%" + ddd_preferencia + "%", "%" + ddd_preferencia + "%"])
 
         cursor.execute(query, tuple(params))
         lista_empresas = cursor.fetchall()
