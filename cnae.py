@@ -144,8 +144,13 @@ if busca and not resultado.empty:
                 # st.dataframe(df_empresas.head(10))  # mostra só prévia
 
                 # Exporta para CSV externo (apenas local, sem download)
-                df_empresas.to_csv("empresas_filtradas.csv", index=False, encoding="utf-8-sig")
-                st.info("Arquivo 'empresas_filtradas.csv' foi salvo localmente com os resultados.")
+                df_empresas.to_csv(
+                f"consulta_{cnae_selecionado}_{cep}_{ddd_preferencia}_{seu_whatsapp}.csv",
+                index=False,
+                encoding="utf-8-sig"
+                )
+                st.info("Arquivo de consulta foi salvo localmente com os resultados.")
+
 
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
