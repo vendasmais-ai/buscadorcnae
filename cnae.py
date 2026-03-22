@@ -3,6 +3,7 @@ import pandas as pd
 import urllib
 import mysql.connector
 import unicodedata
+import datetime
 
 # --- MOSTRAR LISTA DE CNAEs NO INÍCIO ---
 try:
@@ -130,8 +131,11 @@ if st.button("Finalizar e Gerar Mensagem"):
             if ddd_preferencia:
                 filtros_nome += f"{ddd_preferencia}_"
 
+            # 👉 Adiciona data e hora no nome do arquivo
+            data_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
             df_empresas.to_csv(
-                f"consulta_{filtros_nome}{preferencia}_{seu_whatsapp}.csv",
+                f"consulta_{filtros_nome}{preferencia}_{seu_whatsapp}_{data_hora}.csv",
                 index=False,
                 encoding="utf-8-sig"
             )
@@ -145,7 +149,8 @@ if st.button("Finalizar e Gerar Mensagem"):
                 f"DDD: {ddd_preferencia}\n"
                 f"Deseja: {preferencia}\n"
                 f"Resultados encontrados: {total_filtro}\n"
-                f"WhatsApp Cliente: {seu_whatsapp}"
+                f"WhatsApp Cliente: {seu_whatsapp}\n"
+                f"Data/Hora da consulta: {data_hora}"
             )
         else:
             st.warning("Não existem empresas com esses filtros.")
@@ -155,7 +160,8 @@ if st.button("Finalizar e Gerar Mensagem"):
                 f"CEP informado: {cep}\n"
                 f"DDD informado: {ddd_preferencia}\n"
                 f"Deseja: {preferencia}\n"
-                f"WhatsApp Cliente: {seu_whatsapp}\n\n"
+                f"WhatsApp Cliente: {seu_whatsapp}\n"
+                f"Data/Hora da consulta: {datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}\n\n"
                 f"Não existem empresas com esses filtros.\n\n"
                 f"Podemos refinar a busca por região, cidade ou contatos válidos."
             )
