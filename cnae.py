@@ -68,10 +68,10 @@ if st.button("Finalizar e Gerar Mensagem"):
 
         if cep:
             query += " AND `Column 18` LIKE %s"
-            params.append(cep + "%")
+            params.append("%" + cep + "%")   # mais flexível
 
         if ddd_preferencia:
-            query += " AND (`Column 21` = %s OR `Column 23` = %s)"
+            query += " AND (TRIM(`Column 21`) = %s OR TRIM(`Column 23`) = %s)"
             params.extend([ddd_preferencia, ddd_preferencia])
 
         cursor.execute(query, tuple(params))
