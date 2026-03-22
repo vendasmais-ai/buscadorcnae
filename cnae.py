@@ -110,14 +110,14 @@ if busca and not resultado.empty:
 
             # 🔎 TOTAL BRASIL
             cursor.execute(
-                "SELECT COUNT(*) FROM estabelecimento1 WHERE `Column 11` = %s",
+                "SELECT COUNT(*) FROM estabelecimentos WHERE `Column 11` = %s",
                 (cnae_selecionado,)
             )
             total_brasil = cursor.fetchone()[0]
 
             # 🔎 COM FILTROS
             cursor.execute("""
-                SELECT COUNT(*) FROM estabelecimento1
+                SELECT COUNT(*) FROM estabelecimentos
                 WHERE `Column 11` = %s
                 AND `Column 18` LIKE %s
                 AND (`Column 21` = %s OR `Column 23` = %s)
@@ -130,7 +130,7 @@ if busca and not resultado.empty:
                     SELECT `Column 5` AS Nome, `Column 18` AS CEP, `Column 21` AS DDD, 
                            `Column 22` AS Telefone, `Column 23` AS DDD2, `Column 24` AS Telefone2, 
                            `Column 25` AS Email
-                    FROM estabelecimento1
+                    FROM estabelecimentos
                     WHERE `Column 11` = %s
                     AND `Column 18` LIKE %s
                     AND (`Column 21` = %s OR `Column 23` = %s)
@@ -170,7 +170,7 @@ if busca and not resultado.empty:
                     SELECT `Column 5` AS Nome, `Column 18` AS CEP, `Column 21` AS DDD, 
                            `Column 22` AS Telefone, `Column 23` AS DDD2, `Column 24` AS Telefone2, 
                            `Column 25` AS Email
-                    FROM estabelecimento1
+                    FROM estabelecimentos
                     WHERE `Column 11` = %s
                 """, (cnae_selecionado,))
 
