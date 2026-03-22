@@ -6,14 +6,11 @@ import unicodedata
 
 # --- MOSTRAR LISTA DE CNAEs NO INÍCIO ---
 try:
-    # Lê o arquivo ListaCNAES.txt (espera que esteja no formato: numero;descricao)
     df_lista = pd.read_csv("ListaCNAES.txt", sep=";", header=None, names=["CNAE", "Descrição"])
-    
     st.subheader("📑 Lista de CNAEs disponíveis")
-    st.dataframe(df_lista)  # mostra tabela interativa
+    st.dataframe(df_lista)
 except Exception as e:
     st.warning("Não foi possível carregar a lista de CNAEs. Verifique se o arquivo ListaCNAES.txt está na pasta.")
-
 
 # 🔧 FUNÇÃO PARA NORMALIZAR TEXTO (remove acento)
 def normalizar(texto):
@@ -30,8 +27,6 @@ busca = st.text_input("Digite o CNAE ou palavras ou descrição para a busca:")
 
 if busca:
     busca_limpa = normalizar(busca)
-
-    # 🔥 BASE DE CNAE
     tabela_cnae = [
         {"cnae": "6612-6/01", "desc": "Corretoras de títulos e valores mobiliários"},
         {"cnae": "6201-5/01", "desc": "Desenvolvimento de programas de computador"},
@@ -54,11 +49,7 @@ if busca:
             ],
             "Descrição": [item["desc"] for item in resultados_filtrados]
         })
-
-        cnae_selecionado = st.selectbox(
-            "Selecione o CNAE encontrado:",
-            resultado["CNAE"]
-        )
+        cnae_selecionado = st.selectbox("Selecione o CNAE encontrado:", resultado["CNAE"])
     else:
         st.warning("Nenhum CNAE encontrado para essa busca.")
         resultado = pd.DataFrame()
@@ -75,10 +66,7 @@ if busca and not resultado.empty:
     cep = st.text_input("Digite CEP desejado (apenas números ou início):")
     cep = "".join(filter(str.isdigit, cep))
     
-    preferencia = st.radio(
-        "O que deseja receber?",
-        ("Apenas E-mails", "Apenas Telefones", "E-mails + Telefones")
-    )
+    preferencia = st.radio("O que deseja receber?", ("Apenas E-mails", "Apenas Telefones", "E-mails + Telefones"))
     
     seu_whatsapp = st.text_input("Seu WhatsApp com DDD (ex: 11999999999):")
     seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
@@ -89,17 +77,9 @@ if busca and not resultado.empty:
     # --- PARTE 3: ENVIO ---
     if st.button("Finalizar e Gerar Mensagem"):
 
-        if len(cep) < 5:
-            st.warning("Digite pelo menos 5 números do CEP.")
-        
-        elif len(seu_whatsapp) < 10:
+        if len(seu_whatsapp) < 10:
             st.warning("WhatsApp inválido.")
-        
-        elif len(ddd_preferencia) < 2:
-            st.warning("DDD inválido.")
-        
         else:
-            # 🔧 CONEXÃO MYSQL LOCAL
             db = mysql.connector.connect(
                 host="127.0.0.1",
                 user="root",
@@ -109,48 +89,49 @@ if busca and not resultado.empty:
             cursor = db.cursor()
 
             # 🔎 TOTAL BRASIL
-            cursor.execute(
-                "SELECT COUNT(*) FROM estabelecimentos WHERE `Column 11` = %s",
-                (cnae_selecionado,)
-            )
+            cursor.execute("SELECT COUNT(*) FROM estabelecimentos WHERE `Column 11` = %s", (cnae_selecionado,))
             total_brasil = cursor.fetchone()[0]
 
-            # 🔎 COM FILTROS
-            cursor.execute("""
-                SELECT COUNT(*) FROM estabelecimentos
+            # --- QUERY DINÂMICA ---
+            query = """
+                SELECT `Column 5` AS Nome, `Column 18` AS CEP, `Column 21` AS DDD, 
+                       `Column 22` AS Telefone, `Column 23` AS DDD2, `Column 24` AS Telefone2, 
+                       `Column 25` AS Email
+                FROM estabelecimentos
                 WHERE `Column 11` = %s
-                AND `Column 18` LIKE %s
-                AND (`Column 21` = %s OR `Column 23` = %s)
-            """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
+            """
+            params = [cnae_selecionado]
 
-            total_filtro = cursor.fetchone()[0]
+            if cep:
+                query += " AND `Column 18` LIKE %s"
+                params.append(cep + "%")
+
+            if ddd_preferencia:
+                query += " AND (`Column 21` = %s OR `Column 23` = %s)"
+                params.extend([ddd_preferencia, ddd_preferencia])
+
+            cursor.execute(query, tuple(params))
+            lista_empresas = cursor.fetchall()
+            colunas = ["Nome", "CEP", "DDD", "Telefone", "DDD2", "Telefone2", "Email"]
+            df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
+
+            total_filtro = len(df_empresas)
 
             if total_filtro > 0:
-                cursor.execute("""
-                    SELECT `Column 5` AS Nome, `Column 18` AS CEP, `Column 21` AS DDD, 
-                           `Column 22` AS Telefone, `Column 23` AS DDD2, `Column 24` AS Telefone2, 
-                           `Column 25` AS Email
-                    FROM estabelecimentos
-                    WHERE `Column 11` = %s
-                    AND `Column 18` LIKE %s
-                    AND (`Column 21` = %s OR `Column 23` = %s)
-                """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
-
-                lista_empresas = cursor.fetchall()
-                colunas = ["Nome", "CEP", "DDD", "Telefone", "DDD2", "Telefone2", "Email"]
-                df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
-
                 st.success(f"Foram encontradas {total_filtro} empresas com os filtros aplicados.")
-                # st.dataframe(df_empresas.head(10))  # mostra só prévia
 
-                # Exporta para CSV externo (apenas local, sem download)
+                filtros_nome = f"{cnae_selecionado}"
+                if cep:
+                    filtros_nome += f"_{cep}"
+                if ddd_preferencia:
+                    filtros_nome += f"_{ddd_preferencia}"
+
                 df_empresas.to_csv(
-                f"consulta_{cnae_selecionado}_{cep}_{ddd_preferencia}_{seu_whatsapp}.csv",
-                index=False,
-                encoding="utf-8-sig"
+                    f"consulta_{filtros_nome}_{preferencia}_{seu_whatsapp}.csv",
+                    index=False,
+                    encoding="utf-8-sig"
                 )
                 st.info("Arquivo de consulta foi salvo localmente com os resultados.")
-
 
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -165,7 +146,6 @@ if busca and not resultado.empty:
                 st.warning("Não existem empresas com esse CNAE com esses filtros.")
                 st.info(f"Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.")
 
-                # Buscar todas as empresas no Brasil com esse CNAE
                 cursor.execute("""
                     SELECT `Column 5` AS Nome, `Column 18` AS CEP, `Column 21` AS DDD, 
                            `Column 22` AS Telefone, `Column 23` AS DDD2, `Column 24` AS Telefone2, 
@@ -175,15 +155,15 @@ if busca and not resultado.empty:
                 """, (cnae_selecionado,))
 
                 lista_empresas = cursor.fetchall()
-                colunas = ["Nome", "CEP", "DDD", "Telefone", "DDD2", "Telefone2", "Email"]
                 df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
 
                 st.success(f"Foram encontradas {total_brasil} empresas no Brasil com esse CNAE.")
-                # st.dataframe(df_empresas.head(10))  # mostra só prévia
 
-                # Exporta para CSV externo (apenas local, sem download)
-                df_empresas.to_csv(f"empresas_brasil_{cnae_selecionado}_{seu_whatsapp}.csv", index=False, encoding="utf-8-sig")
-
+                df_empresas.to_csv(
+                    f"empresas_brasil_{cnae_selecionado}_{seu_whatsapp}.csv",
+                    index=False,
+                    encoding="utf-8-sig"
+                )
                 st.info("Arquivo 'empresas_brasil.csv' foi salvo localmente com os resultados.")
 
                 texto_msg = (
