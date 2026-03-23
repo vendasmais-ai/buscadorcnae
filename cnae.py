@@ -17,7 +17,6 @@ st.title("🔎 Buscador de CNAE")
 busca = st.text_input("Digite o CNAE ou palavras ou descrição para a busca:")
 if busca:
     busca_limpa = normalizar(busca)
-    # 🔥 BASE DE CNAE
     tabela_cnae = [
         {"cnae": "6612-6/01", "desc": "Corretoras de títulos e valores mobiliários"},
         {"cnae": "6201-5/01", "desc": "Desenvolvimento de programas de computador"},
@@ -34,10 +33,7 @@ if busca:
             "CNAE": [ "".join(filter(str.isdigit, item["cnae"])) for item in resultados_filtrados ],
             "Descrição": [item["desc"] for item in resultados_filtrados]
         })
-        cnae_selecionado = st.selectbox(
-            "Selecione o CNAE encontrado:",
-            resultado["CNAE"]
-        )
+        cnae_selecionado = st.selectbox("Selecione o CNAE encontrado:", resultado["CNAE"])
     else:
         st.warning("Nenhum CNAE encontrado para essa busca.")
         resultado = pd.DataFrame()
@@ -72,48 +68,39 @@ if busca and not resultado.empty:
         elif len(ddd_preferencia) < 2:
             st.warning("DDD inválido.")
         else:
-            # 🔧 CONEXÃO MYSQL LOCAL
             db = mysql.connector.connect(
-                host="127.0.0.1",
-                user="root",
-                password="",
-                database="CNAE"
+                host="127.0.0.1", user="root", password="", database="CNAE"
             )
             cursor = db.cursor()
             
-            # 🔎 TOTAL BRASIL
-            cursor.execute(
-                "SELECT COUNT(*) FROM estabelecimento1 WHERE `Column 11` = %s",
-                (cnae_selecionado,)
-            )
+            # 🔎 TOTAL BRASIL (Contagem)
+            cursor.execute("SELECT COUNT(*) FROM estabelecimento1 WHERE `Column 11` = %s", (cnae_selecionado,))
             total_brasil = cursor.fetchone()[0]
 
-            # 🔎 BUSCA DOS DADOS PARA O CSV (Ajustado para pegar as colunas reais)
-            # Nota: usei os nomes das colunas conforme o cabeçalho que você enviou
+            # 🔎 BUSCA DOS DADOS REAIS
             cursor.execute("""
-                SELECT cnpj, razao_social, email, ddd1, telefone1, ddd2, telefone2 
+                SELECT email, ddd1, telefone1, ddd2, telefone2 
                 FROM estabelecimento1 
                 WHERE `Column 11` = %s AND `Column 18` LIKE %s AND (`Column 21` = %s OR `Column 23` = %s)
             """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
             
             dados_brutos = cursor.fetchall()
-            df_geral = pd.DataFrame(dados_brutos, columns=['cnpj', 'razao_social', 'email', 'ddd1', 'telefone1', 'ddd2', 'telefone2'])
+            df_geral = pd.DataFrame(dados_brutos, columns=['email', 'ddd1', 'telefone1', 'ddd2', 'telefone2'])
 
-            # 🎯 FILTRO DINÂMICO DE COLUNAS (O Ajuste que você pediu)
-            cols_base = ['cnpj', 'razao_social']
+            # 🎯 FILTRAGEM DE COLUNAS (O Ajuste solicitado)
             if preferencia == "Apenas E-mails":
-                df_saida = df_geral[cols_base + ['email']]
+                df_saida = df_geral[['email']]
             elif preferencia == "Apenas Telefones":
-                df_saida = df_geral[cols_base + ['ddd1', 'telefone1', 'ddd2', 'telefone2']]
+                df_saida = df_geral[['ddd1', 'telefone1', 'ddd2', 'telefone2']]
             else:
                 df_saida = df_geral # E-mails + Telefones
 
-            # 💾 SALVA DIRETO NA SUA MÁQUINA
-            df_saida.to_csv("lista_gerada.csv", index=False, sep=';', encoding='utf-8-sig')
+            # 💾 SALVAMENTO LOCAL (O arquivo na sua máquina terá apenas as colunas escolhidas)
+            df_saida.to_csv("saida_cliente.csv", index=False, sep=';', encoding='utf-8-sig')
             
             total_filtro = len(df_saida)
 
-            # 🎯 MENSAGEM FINAL (ORDEM CORRIGIDA)
+            # 🎯 MENSAGEM FINAL
             if total_filtro > 0:
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -126,15 +113,10 @@ if busca and not resultado.empty:
                 )
             else:
                 texto_msg = (
-                    f"CNAE: {cnae_selecionado}\n"
-                    f"CEP informado: {cep}\n"
-                    f"DDD informado: {ddd_preferencia}\n"
-                    f"WhatsApp Cliente: {seu_whatsapp}\n\n"
-                    f"Não existem empresas com esse CNAE com esses filtros.\n\n"
-                    f"Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
-                    f"Vou preparar uma lista qualificada para você.\n"
-                    f"Podemos filtrar por região, cidade ou contatos válidos."
+                    f"CNAE: {cnae_selecionado} não encontrado com esses filtros.\n"
+                    f"Encontradas {total_brasil} empresas no Brasil."
                 )
+            
             cursor.close()
             db.close()
 
