@@ -10,141 +10,138 @@ def normalizar(texto):
         return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
     return ""
 
-st.title("🔎 Buscador de CNAE")
-busca = st.text_input("Digite o CNAE ou palavras para busca:")
+st.title("🔎 Buscador CNAE - APENAS Contatos")
+st.markdown("---")
+
+# 1. BUSCA CNAE
+busca = st.text_input("🔍 Digite CNAE ou descrição:")
 
 if busca:
     busca_limpa = normalizar(busca)
-    tabela_cnae = [
-        {"cnae": "6612-6/01", "desc": "Corretoras de títulos e valores mobiliários"},
-        {"cnae": "6201-5/01", "desc": "Desenvolvimento de programas de computador"},
-        {"cnae": "4711-3/02", "desc": "Supermercados"},
-        {"cnae": "5611-2/01", "desc": "Restaurantes"},
-        {"cnae": "4619-2/00", "desc": "Representantes comerciais"}
+    cnaes = [
+        {"codigo": "6612", "desc": "Corretoras de valores"},
+        {"codigo": "6201", "desc": "Desenvolvimento software"}, 
+        {"codigo": "4711", "desc": "Supermercados"},
+        {"codigo": "5611", "desc": "Restaurantes"},
+        {"codigo": "4619", "desc": "Representantes comerciais"}
     ]
     
-    resultados = [item for item in tabela_cnae 
-                 if busca_limpa in normalizar(item["desc"]) or 
-                 busca_limpa in "".join(filter(str.isdigit, item["cnae"]))]
+    resultados = [c for c in cnaes if busca_limpa in normalizar(c["desc"]) or busca_limpa in c["codigo"]]
     
     if resultados:
-        df_cnae = pd.DataFrame({
-            "CNAE": [''.join(filter(str.isdigit, item["cnae"])) for item in resultados],
-            "Descrição": [item["desc"] for item in resultados]
-        })
-        cnae_selecionado = st.selectbox("Selecione CNAE:", df_cnae["CNAE"])
+        cnae_selecionado = st.selectbox("✅ CNAE encontrado:", 
+                                       [f"{c['codigo']} - {c['desc']}" for c in resultados])
+        cnae_numero = cnae_selecionado.split(" - ")[0]
     else:
-        st.warning("❌ Nenhum CNAE encontrado")
-        cnae_selecionado = ""
+        st.error("❌ CNAE não encontrado")
+        st.stop()
 else:
-    cnae_selecionado = ""
+    st.warning("Digite algo para buscar CNAE")
+    st.stop()
 
-if cnae_selecionado:
-    st.divider()
-    st.subheader("📋 Filtros do Cliente")
-    
-    cep = st.text_input("CEP (apenas números):")
+# 2. FILTROS
+st.subheader("📋 Filtros do Cliente")
+col1, col2 = st.columns(2)
+with col1:
+    cep = st.text_input("CEP:", value="12230")
     cep = ''.join(filter(str.isdigit, cep))
-    
-    preferencia = st.radio("Cliente quer:", ("Apenas E-mails", "Apenas Telefones", "E-mails + Telefones"))
-    
-    whatsapp_cliente = st.text_input("WhatsApp do cliente:")
-    whatsapp_cliente = ''.join(filter(str.isdigit, whatsapp_cliente))
-    
-    ddd = st.text_input("DDD:")
+with col2:
+    ddd = st.text_input("DDD:", value="12")
     ddd = ''.join(filter(str.isdigit, ddd))
 
-    if st.button("🚀 BUSCAR E BAIXAR", type="primary"):
-        if len(cep) < 5:
-            st.error("CEP precisa de 5+ dígitos")
-        elif len(whatsapp_cliente) < 10:
-            st.error("WhatsApp inválido")
-        elif len(ddd) < 2:
-            st.error("DDD inválido")
+preferencia = st.radio("💼 Cliente quer:", 
+                      ("📧 Apenas E-mails", "📞 Apenas Telefones", "📧📞 E-mails + Telefones"))
+
+whatsapp = st.text_input("📱 WhatsApp cliente:", value="11999999999")
+whatsapp = ''.join(filter(str.isdigit, whatsapp))
+
+# 3. EXECUTAR
+if st.button("🚀 BUSCAR CONTATOS", type="primary"):
+    if len(cep) < 5 or len(ddd) < 2 or len(whatsapp) < 10:
+        st.error("❌ Preencha todos os campos corretamente")
+    else:
+        with st.spinner("🔍 Buscando no banco..."):
+            # CONEXÃO
+            conn = mysql.connector.connect(
+                host="127.0.0.1", user="root", password="", database="CNAE"
+            )
+            
+            # QUERY ESPECÍFICA
+            if "E-mails" in preferencia and "Telefones" not in preferencia:
+                # APENAS EMAIL
+                query = """
+                    SELECT `Column 24` as email 
+                    FROM estabelecimento1 
+                    WHERE `Column 11` = %s 
+                    AND `Column 18` LIKE %s
+                    AND `Column 24` != '' 
+                    AND `Column 24` IS NOT NULL
+                    AND (`Column 21` = %s OR `Column 23` = %s)
+                """
+                nome_arquivo = f"emails_CNAE{cnae_numero}_CEP{cep}.csv"
+            elif "Telefones" in preferencia and "E-mails" not in preferencia:
+                # APENAS TELEFONE
+                query = """
+                    SELECT `Column 21` as ddd1, `Column 23` as telefone1
+                    FROM estabelecimento1 
+                    WHERE `Column 11` = %s 
+                    AND `Column 18` LIKE %s
+                    AND (`Column 21` = %s OR `Column 23` = %s)
+                """
+                nome_arquivo = f"tel_CNAE{cnae_numero}_CEP{cep}.csv"
+            else:
+                # AMBOS
+                query = """
+                    SELECT `Column 24` as email, `Column 21` as ddd1, `Column 23` as telefone1
+                    FROM estabelecimento1 
+                    WHERE `Column 11` = %s 
+                    AND `Column 18` LIKE %s
+                    AND (`Column 21` = %s OR `Column 23` = %s)
+                """
+                nome_arquivo = f"contatos_CNAE{cnae_numero}_CEP{cep}.csv"
+            
+            df = pd.read_sql(query, conn, params=(cnae_numero, f"%{cep}%", ddd, ddd))
+            conn.close()
+        
+        if len(df) > 0:
+            st.success(f"✅ {len(df)} contatos encontrados!")
+            
+            # PREVIEW
+            st.subheader("📊 Preview:")
+            st.dataframe(df.head(), use_container_width=True)
+            
+            # DOWNLOAD
+            csv_data = df.to_csv(index=False, encoding='utf-8').encode('utf-8')
+            st.download_button(
+                label=f"📥 DOWNLOAD {len(df)} LINHAS",
+                data=csv_data,
+                file_name=nome_arquivo,
+                mime='text/csv',
+                type="secondary"
+            )
+            
+            # WHATSAPP
+            msg = f"""✅ LISTA PRONTA!
+CNAE: {cnae_numero}
+CEP: {cep} DDD: {ddd}
+📊 {len(df)} {preferencia.split()[0].lower()}s
+👤 Cliente: ({whatsapp})"""
+            
+            st.markdown(f"""
+            <a href="https://wa.me/5512981779669?text={urllib.parse.quote(msg)}" 
+               target="_blank" style="
+               background: linear-gradient(45deg, #25D366, #128C7E);
+               color: white; padding: 20px; border-radius: 15px; 
+               text-decoration: none; font-weight: bold; font-size: 18px;
+               width: 100%; text-align: center; display: block; 
+               box-shadow: 0 4px 15px rgba(37,211,102,0.3);">
+               📱 ENVIAR WHATSAPP
+            </a>
+            """, unsafe_allow_html=True)
+            
         else:
-            with st.spinner("Procurando contatos..."):
-                # CONECTA MYSQL
-                conn = mysql.connector.connect(
-                    host="127.0.0.1", user="root", password="", database="CNAE"
-                )
-                
-                # QUERY ESPECÍFICA POR ESCOLHA
-                if preferencia == "Apenas E-mails":
-                    query = """
-                        SELECT `Column 24` as email
-                        FROM estabelecimento1 
-                        WHERE `Column 11` = %s 
-                        AND `Column 18` LIKE %s
-                        AND `Column 24` IS NOT NULL 
-                        AND `Column 24` != ''
-                        AND (`Column 21` = %s OR `Column 23` = %s)
-                        LIMIT 5000
-                    """
-                    filename = f"emails_CNAE_{cnae_selecionado}_CEP_{cep}.csv"
-                elif preferencia == "Apenas Telefones":
-                    query = """
-                        SELECT `Column 21` as ddd1, `Column 23` as telefone1
-                        FROM estabelecimento1 
-                        WHERE `Column 11` = %s 
-                        AND `Column 18` LIKE %s
-                        AND (`Column 21` = %s OR `Column 23` = %s)
-                        AND (`Column 21` IS NOT NULL OR `Column 23` IS NOT NULL)
-                        LIMIT 5000
-                    """
-                    filename = f"telefones_CNAE_{cnae_selecionado}_CEP_{cep}.csv"
-                else:  # Ambos
-                    query = """
-                        SELECT `Column 24` as email, `Column 21` as ddd1, `Column 23` as telefone1
-                        FROM estabelecimento1 
-                        WHERE `Column 11` = %s 
-                        AND `Column 18` LIKE %s
-                        AND (`Column 21` = %s OR `Column 23` = %s)
-                        LIMIT 5000
-                    """
-                    filename = f"contatos_CNAE_{cnae_selecionado}_CEP_{cep}.csv"
-                
-                df_resultado = pd.read_sql(query, conn, 
-                    params=(cnae_selecionado, f"%{cep}%", ddd, ddd))
-                
-                conn.close()
-                
-                if len(df_resultado) > 0:
-                    st.success(f"✅ {len(df_resultado)} contatos encontrados!")
-                    
-                    # MOSTRA PREVIEW
-                    st.subheader("👀 Preview:")
-                    st.dataframe(df_resultado.head(5), use_container_width=True)
-                    
-                    # DOWNLOAD
-                    csv = df_resultado.to_csv(index=False, encoding='utf-8').encode('utf-8')
-                    st.download_button(
-                        label=f"📥 BAIXAR CSV ({len(df_resultado)} linhas)",
-                        data=csv,
-                        file_name=filename,
-                        mime="text/csv"
-                    )
-                    
-                    # WHATSAPP
-                    mensagem = f"""✅ LISTA CNAE {cnae_selecionado}
-CEP {cep} | DDD {ddd}
-📊 {len(df_resultado)} {preferencia.lower()}
-👤 Cliente: {whatsapp_cliente}"""
-                    
-                else:
-                    st.warning("❌ Nenhum contato encontrado")
-                    mensagem = f"""❌ CNAE {cnae_selecionado}
-CEP {cep} | DDD {ddd}
-Nenhum resultado
-👤 Cliente: {whatsapp_cliente}"""
-                
-                # BOTÃO WHATSAPP
-                st.markdown(f"""
-                <a href="https://wa.me/5512981779669?text={urllib.parse.quote(mensagem)}" 
-                   target="_blank" style="
-                   background: #25D366; color: white; padding: 15px; 
-                   border-radius: 10px; text-decoration: none; 
-                   font-weight: bold; width: 100%; text-align: center;
-                   display: block; margin-top: 20px;">
-                   📱 ENVIAR RELATÓRIO WHATSAPP
-                </a>
-                """, unsafe_allow_html=True)
+            st.warning("❌ Zero contatos encontrados")
+            st.info("Tente outro CEP ou DDD")
+
+st.markdown("---")
+st.caption("👨‍💻 Feito para DeBocaEmBoca - Caçapava/SP")
