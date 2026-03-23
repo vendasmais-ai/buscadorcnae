@@ -96,7 +96,7 @@ if busca and not resultado.empty:
                 df_saida = df_geral # E-mails + Telefones
 
             # 💾 SALVAMENTO LOCAL (O arquivo na sua máquina terá apenas as colunas escolhidas)
-            df_saida.to_csv("saida_cliente.csv", index=False, sep=';', encoding='utf-8-sig')
+            df_saida.to_csv("saida_cliente.csv", index=False, sep=',', encoding='utf-8-sig')
             
             total_filtro = len(df_saida)
 
