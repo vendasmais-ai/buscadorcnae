@@ -3,6 +3,7 @@ import pandas as pd
 import urllib
 import mysql.connector
 import unicodedata
+import io
 
 # 🔧 FUNÇÃO PARA NORMALIZAR TEXTO (remove acento)
 def normalizar(texto):
@@ -14,12 +15,11 @@ def normalizar(texto):
 
 # --- PARTE 1: BUSCA DE CNAE ---
 st.title("🔎 Buscador de CNAE")
-
 busca = st.text_input("Digite o CNAE ou palavras ou descrição para a busca:")
 
 if busca:
     busca_limpa = normalizar(busca)
-
+    
     # 🔥 BASE DE CNAE
     tabela_cnae = [
         {"cnae": "6612-6/01", "desc": "Corretoras de títulos e valores mobiliários"},
@@ -28,22 +28,18 @@ if busca:
         {"cnae": "5611-2/01", "desc": "Restaurantes"},
         {"cnae": "4619-2/00", "desc": "Representantes comerciais e agentes do comércio de mercadorias em geral não especializado"},
     ]
-
+    
     resultados_filtrados = [
         item for item in tabela_cnae
-        if busca_limpa in normalizar(item["desc"])
-        or busca_limpa in "".join(filter(str.isdigit, item["cnae"]))
+        if busca_limpa in normalizar(item["desc"]) or busca_limpa in "".join(filter(str.isdigit, item["cnae"]))
     ]
-
+    
     if resultados_filtrados:
         resultado = pd.DataFrame({
-            "CNAE": [
-                "".join(filter(str.isdigit, item["cnae"]))
-                for item in resultados_filtrados
-            ],
+            "CNAE": [ "".join(filter(str.isdigit, item["cnae"])) for item in resultados_filtrados ],
             "Descrição": [item["desc"] for item in resultados_filtrados]
         })
-
+        
         cnae_selecionado = st.selectbox(
             "Selecione o CNAE encontrado:",
             resultado["CNAE"]
@@ -71,22 +67,18 @@ if busca and not resultado.empty:
     
     seu_whatsapp = st.text_input("Seu WhatsApp com DDD (ex: 11999999999):")
     seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
-
+    
     ddd_preferencia = st.text_input("DDD da região (ex: 11):")
     ddd_preferencia = "".join(filter(str.isdigit, ddd_preferencia))
 
-    # --- PARTE 3: ENVIO ---
+    # --- PARTE 3: ENVIO E DOWNLOAD ---
     if st.button("Finalizar e Gerar Mensagem"):
-
         if len(cep) < 5:
             st.warning("Digite pelo menos 5 números do CEP.")
-        
         elif len(seu_whatsapp) < 10:
             st.warning("WhatsApp inválido.")
-        
         elif len(ddd_preferencia) < 2:
             st.warning("DDD inválido.")
-        
         else:
             # 🔧 CONEXÃO MYSQL LOCAL
             db = mysql.connector.connect(
@@ -96,31 +88,52 @@ if busca and not resultado.empty:
                 database="CNAE"
             )
             cursor = db.cursor()
-
+            
             # 🔎 TOTAL BRASIL
             cursor.execute(
                 "SELECT COUNT(*) FROM estabelecimento1 WHERE `Column 11` = %s",
                 (cnae_selecionado,)
             )
             total_brasil = cursor.fetchone()[0]
-
-            # 🔎 COM FILTROS (buscando apenas email e telefone)
+            
+            # 🔎 COM FILTROS
             cursor.execute("""
-                SELECT `Column 29` AS email, `Column 30` AS telefone
-                FROM estabelecimento1
-                WHERE `Column 11` = %s
-                AND `Column 18` LIKE %s
+                SELECT COUNT(*) FROM estabelecimento1 
+                WHERE `Column 11` = %s 
+                AND `Column 18` LIKE %s 
                 AND (`Column 21` = %s OR `Column 23` = %s)
             """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
-
-            dados = cursor.fetchall()
-
-            # Criar DataFrame só com email e telefone
-            df_resultados = pd.DataFrame(dados, columns=["email", "telefone"])
-
-            total_filtro = len(df_resultados)
-
-            # 🎯 MENSAGEM FINAL
+            total_filtro = cursor.fetchone()[0]
+            
+            # 🎯 CONSULTA PARA CSV (COLUNAS IMPORTANTES)
+            colunas_base = ["Column 1", "Column 2", "Column 5", "Column 11", "Column 18"]  # Razão social, nome fantasia, endereço, CNAE, CEP
+            colunas_email = ["Column 24"]  # Email (ajuste se necessário)
+            colunas_tel = ["Column 21", "Column 23"]  # Telefones
+            
+            # Define colunas baseado na preferência
+            if preferencia == "Apenas E-mails":
+                colunas_selecionadas = colunas_base + colunas_email
+            elif preferencia == "Apenas Telefones":
+                colunas_selecionadas = colunas_base + colunas_tel
+            else:  # E-mails + Telefones
+                colunas_selecionadas = colunas_base + colunas_email + colunas_tel
+            
+            # Query com colunas selecionadas
+            colunas_str = "`" + "`, `".join(colunas_selecionadas) + "`"
+            query_csv = f"""
+                SELECT {colunas_str} 
+                FROM estabelecimento1 
+                WHERE `Column 11` = %s 
+                AND `Column 18` LIKE %s 
+                AND (`Column 21` = %s OR `Column 23` = %s)
+                LIMIT 1000
+            """
+            df_contatos = pd.read_sql(query_csv, db, params=(cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
+            
+            cursor.close()
+            db.close()
+            
+            # 🎯 MENSAGEM FINAL (ORDEM CORRIGIDA)
             if total_filtro > 0:
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -131,6 +144,18 @@ if busca and not resultado.empty:
                     f"Deseja: {preferencia}\n"
                     f"WhatsApp Cliente: {seu_whatsapp}"
                 )
+                
+                st.success(f"✅ Encontrados {total_filtro} contatos!")
+                
+                # 📥 DOWNLOAD CSV COM COLUNAS ESCOLHIDAS
+                csv = df_contatos.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label=f"📥 Baixar CSV ({len(df_contatos)} linhas - {preferencia})",
+                    data=csv,
+                    file_name=f"contatos_CNAE_{cnae_selecionado}_{cep}_{ddd_preferencia}.csv",
+                    mime='text/csv'
+                )
+                
             else:
                 texto_msg = (
                     f"CNAE: {cnae_selecionado}\n"
@@ -142,14 +167,11 @@ if busca and not resultado.empty:
                     f"Vou preparar uma lista qualificada para você.\n"
                     f"Podemos filtrar por região, cidade ou contatos válidos."
                 )
-
-            cursor.close()
-            db.close()
-
+                st.warning("Nenhum contato com esses filtros exatos.")
+            
             # 🔗 LINK WHATSAPP
             msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
             link_whatsapp = f"https://wa.me/5512981779669?text={msg_codificada}"
-
             st.markdown(f"""
                 <a href="{link_whatsapp}" target="_blank">
                     <button style="background-color: #25D366; color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px;">
@@ -158,14 +180,3 @@ if busca and not resultado.empty:
                 </a>
             """, unsafe_allow_html=True)
 
-            # --- PARTE 4: EXPORTAÇÃO CSV ---
-            if preferencia == "Apenas E-mails":
-                colunas_exportar = ["email"]
-            elif preferencia == "Apenas Telefones":
-                colunas_exportar = ["telefone"]
-            else:  # "E-mails + Telefones"
-                colunas_exportar = ["email", "telefone"]
-
-            df_exportar = df_resultados[colunas_exportar]
-            df_exportar.to_csv("saida.csv", index=False, encoding="utf-8")
-            st.success("Arquivo 'saida.csv' gerado com sucesso!")
