@@ -104,7 +104,7 @@ if busca and not resultado.empty:
             )
             total_brasil = cursor.fetchone()[0]
 
-            # 🔎 COM FILTROS (buscando email e telefone)
+            # 🔎 COM FILTROS (buscando apenas email e telefone)
             cursor.execute("""
                 SELECT `Column 29` AS email, `Column 30` AS telefone
                 FROM estabelecimento1
@@ -115,7 +115,7 @@ if busca and not resultado.empty:
 
             dados = cursor.fetchall()
 
-            # Criar DataFrame com resultados
+            # Criar DataFrame só com email e telefone
             df_resultados = pd.DataFrame(dados, columns=["email", "telefone"])
 
             total_filtro = len(df_resultados)
