@@ -52,10 +52,12 @@ if busca and not resultado.empty:
     st.subheader("📋 Informações Adicionais")
     cep = st.text_input("Digite CEP desejado (apenas números ou início):")
     cep = "".join(filter(str.isdigit, cep))
+    
     preferencia = st.radio(
         "O que deseja receber?",
         ("Apenas E-mails", "Apenas Telefones", "E-mails + Telefones")
     )
+    
     seu_whatsapp = st.text_input("Seu WhatsApp com DDD (ex: 11999999999):")
     seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
     ddd_preferencia = st.text_input("DDD da região (ex: 11):")
@@ -78,6 +80,7 @@ if busca and not resultado.empty:
                 database="CNAE"
             )
             cursor = db.cursor()
+            
             # 🔎 TOTAL BRASIL
             cursor.execute(
                 "SELECT COUNT(*) FROM estabelecimento1 WHERE `Column 11` = %s",
@@ -85,29 +88,29 @@ if busca and not resultado.empty:
             )
             total_brasil = cursor.fetchone()[0]
 
-            # 🔎 BUSCA DOS DADOS (Aqui fazemos a extração para salvar o arquivo)
-            # Adicionei os nomes das colunas de contato conforme seu CSV
-            query_dados = """
-                SELECT * FROM estabelecimento1 
+            # 🔎 BUSCA DOS DADOS PARA O CSV (Ajustado para pegar as colunas reais)
+            # Nota: usei os nomes das colunas conforme o cabeçalho que você enviou
+            cursor.execute("""
+                SELECT cnpj, razao_social, email, ddd1, telefone1, ddd2, telefone2 
+                FROM estabelecimento1 
                 WHERE `Column 11` = %s AND `Column 18` LIKE %s AND (`Column 21` = %s OR `Column 23` = %s)
-            """
-            cursor.execute(query_dados, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
-            colunas = [i[0] for i in cursor.description]
-            dados_query = cursor.fetchall()
-            df_geral = pd.DataFrame(dados_query, columns=colunas)
+            """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
+            
+            dados_brutos = cursor.fetchall()
+            df_geral = pd.DataFrame(dados_brutos, columns=['cnpj', 'razao_social', 'email', 'ddd1', 'telefone1', 'ddd2', 'telefone2'])
 
-            # 🎯 AJUSTE DE COLUNAS SOLICITADO
-            # Aqui ele filtra o DataFrame antes de salvar na sua máquina
+            # 🎯 FILTRO DINÂMICO DE COLUNAS (O Ajuste que você pediu)
+            cols_base = ['cnpj', 'razao_social']
             if preferencia == "Apenas E-mails":
-                df_saida = df_geral[['email']] # Mantém só e-mail
+                df_saida = df_geral[cols_base + ['email']]
             elif preferencia == "Apenas Telefones":
-                df_saida = df_geral[['ddd1', 'telefone1', 'ddd2', 'telefone2']] # Mantém só telefones
+                df_saida = df_geral[cols_base + ['ddd1', 'telefone1', 'ddd2', 'telefone2']]
             else:
-                df_saida = df_geral[['email', 'ddd1', 'telefone1', 'ddd2', 'telefone2']] # Ambos
+                df_saida = df_geral # E-mails + Telefones
 
-            # 💾 COMANDO PARA SALVAR NA SUA MÁQUINA (Ajuste o caminho se necessário)
-            df_saida.to_csv("resultado_contatos.csv", index=False, sep=';', encoding='utf-8-sig')
-
+            # 💾 SALVA DIRETO NA SUA MÁQUINA
+            df_saida.to_csv("lista_gerada.csv", index=False, sep=';', encoding='utf-8-sig')
+            
             total_filtro = len(df_saida)
 
             # 🎯 MENSAGEM FINAL (ORDEM CORRIGIDA)
