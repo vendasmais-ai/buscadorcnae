@@ -105,29 +105,29 @@ if busca and not resultado.empty:
             """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
             total_filtro = cursor.fetchone()[0]
             
-            # 🎯 COLUNAS EXATAMENTE PEDIDAS PELO CLIENTE
+            # 🎯 COLUNAS EXATAS DO CABEÇALHO QUE VC MOSTROU
             if preferencia == "Apenas E-mails":
-                colunas_csv = ["Column 24"]  # APENAS EMAIL
+                colunas_csv = ["email"]
                 nome_arquivo = f"emails_CNAE_{cnae_selecionado}_{cep}.csv"
             elif preferencia == "Apenas Telefones":
-                colunas_csv = ["Column 21", "Column 23"]  # APENAS TELEFONES
+                colunas_csv = ["ddd1", "telefone1", "ddd2", "telefone2"]
                 nome_arquivo = f"telefones_CNAE_{cnae_selecionado}_{cep}.csv"
             else:  # E-mails + Telefones
-                colunas_csv = ["Column 24", "Column 21", "Column 23"]  # EMAIL + TEL
+                colunas_csv = ["email", "ddd1", "telefone1", "ddd2", "telefone2"]
                 nome_arquivo = f"emails_telefones_CNAE_{cnae_selecionado}_{cep}.csv"
             
-            # Query com APENAS as colunas escolhidas
-            colunas_str = "`" + "`, `".join(colunas_csv) + "`"
-            query_csv = f"""
-                SELECT {colunas_str} 
-                FROM estabelecimento1 
+            # 🔥 FIX: BUSCA TODAS COLUNAS PRIMEIRO, DEPOIS FILTRA EXATAMENTE AS PEDIDAS
+            query_completa = """
+                SELECT * FROM estabelecimento1 
                 WHERE `Column 11` = %s 
                 AND `Column 18` LIKE %s 
                 AND (`Column 21` = %s OR `Column 23` = %s)
                 LIMIT 1000
             """
+            df_completo = pd.read_sql(query_completa, db, params=(cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
             
-            df_contatos = pd.read_sql(query_csv, db, params=(cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
+            # ✅ SELECIONA APENAS AS COLUNAS PEDIDAS
+            df_contatos = df_completo[colunas_csv].copy()
             
             cursor.close()
             db.close()
@@ -146,16 +146,21 @@ if busca and not resultado.empty:
                 
                 st.success(f"✅ {total_filtro} {preferencia.lower()} encontrados!")
                 
-                # 📥 DOWNLOAD CSV - APENAS COLUNAS PEDIDAS
-                csv = df_contatos.to_csv(index=False, encoding='utf-8').encode('utf-8')
+                st.dataframe(df_contatos.head())  # Mostra preview
+                
+                # 📥 DOWNLOAD CSV - APENAS COLUNAS FILTRADAS
+                csv_buffer = io.StringIO()
+                df_contatos.to_csv(csv_buffer, index=False, encoding='utf-8')
+                csv_bytes = csv_buffer.getvalue().encode('utf-8')
+                
                 st.download_button(
                     label=f"📥 Baixar {preferencia} ({len(df_contatos)} linhas)",
-                    data=csv,
+                    data=csv_bytes,
                     file_name=nome_arquivo,
                     mime='text/csv'
                 )
                 
-                st.info(f"📋 CSV contém APENAS: {', '.join(colunas_csv)}")
+                st.info(f"✅ CSV com APENAS: {', '.join(colunas_csv)}")
                 
             else:
                 texto_msg = (
