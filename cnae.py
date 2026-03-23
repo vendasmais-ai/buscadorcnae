@@ -117,11 +117,13 @@ if st.button("Finalizar e Gerar Mensagem"):
             else:
                 df_saida = df_empresas[['email', 'ddd1', 'telefone1', 'ddd2', 'telefone2']]
 
-            # ✅ LIMPEZA (NOVO)
+            # ✅ LIMPEZA (CORREÇÃO APLICADA)
             df_saida = df_saida.dropna(how='all')
 
             if 'email' in df_saida.columns:
-                df_saida = df_saida.dropna(subset=['email'])
+                df_saida['email'] = df_saida['email'].astype(str).str.strip().str.lower()
+                df_saida = df_saida[df_saida['email'] != '']
+                df_saida = df_saida[df_saida['email'] != 'nan']
                 df_saida = df_saida.drop_duplicates(subset=['email'])
             else:
                 df_saida = df_saida.drop_duplicates()
