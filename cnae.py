@@ -105,21 +105,19 @@ if busca and not resultado.empty:
             """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
             total_filtro = cursor.fetchone()[0]
             
-            # 🎯 CONSULTA PARA CSV (COLUNAS IMPORTANTES)
-            colunas_base = ["Column 1", "Column 2", "Column 5", "Column 11", "Column 18"]  # Razão social, nome fantasia, endereço, CNAE, CEP
-            colunas_email = ["Column 24"]  # Email (ajuste se necessário)
-            colunas_tel = ["Column 21", "Column 23"]  # Telefones
-            
-            # Define colunas baseado na preferência
+            # 🎯 COLUNAS EXATAMENTE PEDIDAS PELO CLIENTE
             if preferencia == "Apenas E-mails":
-                colunas_selecionadas = colunas_base + colunas_email
+                colunas_csv = ["Column 24"]  # APENAS EMAIL
+                nome_arquivo = f"emails_CNAE_{cnae_selecionado}_{cep}.csv"
             elif preferencia == "Apenas Telefones":
-                colunas_selecionadas = colunas_base + colunas_tel
+                colunas_csv = ["Column 21", "Column 23"]  # APENAS TELEFONES
+                nome_arquivo = f"telefones_CNAE_{cnae_selecionado}_{cep}.csv"
             else:  # E-mails + Telefones
-                colunas_selecionadas = colunas_base + colunas_email + colunas_tel
+                colunas_csv = ["Column 24", "Column 21", "Column 23"]  # EMAIL + TEL
+                nome_arquivo = f"emails_telefones_CNAE_{cnae_selecionado}_{cep}.csv"
             
-            # Query com colunas selecionadas
-            colunas_str = "`" + "`, `".join(colunas_selecionadas) + "`"
+            # Query com APENAS as colunas escolhidas
+            colunas_str = "`" + "`, `".join(colunas_csv) + "`"
             query_csv = f"""
                 SELECT {colunas_str} 
                 FROM estabelecimento1 
@@ -128,12 +126,13 @@ if busca and not resultado.empty:
                 AND (`Column 21` = %s OR `Column 23` = %s)
                 LIMIT 1000
             """
+            
             df_contatos = pd.read_sql(query_csv, db, params=(cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
             
             cursor.close()
             db.close()
             
-            # 🎯 MENSAGEM FINAL (ORDEM CORRIGIDA)
+            # 🎯 MENSAGEM FINAL
             if total_filtro > 0:
                 texto_msg = (
                     f"Novo Interesse de CNAE\n\n"
@@ -145,16 +144,18 @@ if busca and not resultado.empty:
                     f"WhatsApp Cliente: {seu_whatsapp}"
                 )
                 
-                st.success(f"✅ Encontrados {total_filtro} contatos!")
+                st.success(f"✅ {total_filtro} {preferencia.lower()} encontrados!")
                 
-                # 📥 DOWNLOAD CSV COM COLUNAS ESCOLHIDAS
-                csv = df_contatos.to_csv(index=False).encode('utf-8')
+                # 📥 DOWNLOAD CSV - APENAS COLUNAS PEDIDAS
+                csv = df_contatos.to_csv(index=False, encoding='utf-8').encode('utf-8')
                 st.download_button(
-                    label=f"📥 Baixar CSV ({len(df_contatos)} linhas - {preferencia})",
+                    label=f"📥 Baixar {preferencia} ({len(df_contatos)} linhas)",
                     data=csv,
-                    file_name=f"contatos_CNAE_{cnae_selecionado}_{cep}_{ddd_preferencia}.csv",
+                    file_name=nome_arquivo,
                     mime='text/csv'
                 )
+                
+                st.info(f"📋 CSV contém APENAS: {', '.join(colunas_csv)}")
                 
             else:
                 texto_msg = (
@@ -167,7 +168,7 @@ if busca and not resultado.empty:
                     f"Vou preparar uma lista qualificada para você.\n"
                     f"Podemos filtrar por região, cidade ou contatos válidos."
                 )
-                st.warning("Nenhum contato com esses filtros exatos.")
+                st.warning("Nenhum contato com esses filtros.")
             
             # 🔗 LINK WHATSAPP
             msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
@@ -179,4 +180,3 @@ if busca and not resultado.empty:
                     </button>
                 </a>
             """, unsafe_allow_html=True)
-
