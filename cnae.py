@@ -49,7 +49,7 @@ if st.button("Finalizar e Gerar Mensagem"):
         )
         cursor = db.cursor()
 
-        # --- QUERY DINÂMICA COM TODAS AS 30 COLUNAS ---
+        # --- QUERY ---
         query = """
             SELECT 
                 `Column 0`  AS cnpj_basico,
@@ -106,20 +106,21 @@ if st.button("Finalizar e Gerar Mensagem"):
         cursor.execute(query, tuple(params))
         lista_empresas = cursor.fetchall()
 
-        colunas = [
-            "cnpj","matriz_filial","situacao","motivo_situacao","nome_fantasia","razao_social",
-            "data_abertura","porte","opcao_simples","data_opcao_simples","data_exclusao_simples",
-            "cnae_principal","cnae_secundario","tipo_logradouro","logradouro","numero","complemento",
-            "bairro","cep","uf","municipio","ddd1","telefone1","ddd2","telefone2","email",
-            "situacao_especial","data_situacao_especial","capital_social","responsavel"
-        ]
-
+        colunas = [desc[0] for desc in cursor.description]
         df_empresas = pd.DataFrame(lista_empresas, columns=colunas)
 
         total_filtro = len(df_empresas)
 
         if total_filtro > 0:
             st.success(f"Foram encontradas {total_filtro} empresas com os filtros aplicados.")
+
+            # 🎯 FILTRO DE COLUNAS (AJUSTE SOLICITADO)
+            if preferencia == "Apenas E-mails":
+                df_saida = df_empresas[['email']]
+            elif preferencia == "Apenas Telefones":
+                df_saida = df_empresas[['ddd1', 'telefone1', 'ddd2', 'telefone2']]
+            else:
+                df_saida = df_empresas[['email', 'ddd1', 'telefone1', 'ddd2', 'telefone2']]
 
             filtros_nome = ""
             if cnae_selecionado:
@@ -131,14 +132,14 @@ if st.button("Finalizar e Gerar Mensagem"):
             if ddd_preferencia:
                 filtros_nome += f"{ddd_preferencia}_"
 
-            # 👉 Adiciona data e hora no nome do arquivo
             data_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-            df_empresas.to_csv(
+            df_saida.to_csv(
                 f"consulta_{filtros_nome}{preferencia}_{seu_whatsapp}_{data_hora}.csv",
                 index=False,
                 encoding="utf-8-sig"
             )
+
             st.info("Arquivo de consulta foi salvo localmente com os resultados.")
 
             texto_msg = (
@@ -169,7 +170,6 @@ if st.button("Finalizar e Gerar Mensagem"):
         cursor.close()
         db.close()
 
-        # 🔗 SAÍDA PARA WHATSAPP
         msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
         link_whatsapp = f"https://wa.me/5512981779669?text={msg_codificada}"
 
