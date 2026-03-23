@@ -13,7 +13,6 @@ try:
 except Exception as e:
     st.warning("Não foi possível carregar a lista de CNAEs. Verifique se o arquivo ListaCNAES.txt está na pasta.")
 
-# 🔧 FUNÇÃO PARA NORMALIZAR TEXTO (remove acento)
 def normalizar(texto):
     texto = texto.lower().strip()
     return ''.join(
@@ -21,7 +20,6 @@ def normalizar(texto):
         if unicodedata.category(c) != 'Mn'
     )
 
-# --- PARTE 1: FILTROS DE CONSULTA ---
 st.title("🔎 Buscador de Empresas")
 
 cnae_selecionado = st.text_input("Digite o CNAE (apenas números):")
@@ -35,7 +33,6 @@ preferencia = st.radio("O que deseja receber?", ("Apenas E-mails", "Apenas Telef
 seu_whatsapp = st.text_input("Seu WhatsApp com DDD (ex: 11999999999):")
 seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
 
-# --- PARTE 2: EXECUTAR CONSULTA ---
 if st.button("Finalizar e Gerar Mensagem"):
 
     if len(seu_whatsapp) < 10:
@@ -49,7 +46,6 @@ if st.button("Finalizar e Gerar Mensagem"):
         )
         cursor = db.cursor()
 
-        # --- QUERY ---
         query = """
             SELECT 
                 `Column 0`  AS cnpj_basico,
@@ -114,13 +110,21 @@ if st.button("Finalizar e Gerar Mensagem"):
         if total_filtro > 0:
             st.success(f"Foram encontradas {total_filtro} empresas com os filtros aplicados.")
 
-            # 🎯 FILTRO DE COLUNAS (AJUSTE SOLICITADO)
             if preferencia == "Apenas E-mails":
                 df_saida = df_empresas[['email']]
             elif preferencia == "Apenas Telefones":
                 df_saida = df_empresas[['ddd1', 'telefone1', 'ddd2', 'telefone2']]
             else:
                 df_saida = df_empresas[['email', 'ddd1', 'telefone1', 'ddd2', 'telefone2']]
+
+            # ✅ LIMPEZA (NOVO)
+            df_saida = df_saida.dropna(how='all')
+
+            if 'email' in df_saida.columns:
+                df_saida = df_saida.dropna(subset=['email'])
+                df_saida = df_saida.drop_duplicates(subset=['email'])
+            else:
+                df_saida = df_saida.drop_duplicates()
 
             filtros_nome = ""
             if cnae_selecionado:
@@ -149,23 +153,13 @@ if st.button("Finalizar e Gerar Mensagem"):
                 f"CEP: {cep}\n"
                 f"DDD: {ddd_preferencia}\n"
                 f"Deseja: {preferencia}\n"
-                f"Resultados encontrados: {total_filtro}\n"
+                f"Resultados encontrados: {len(df_saida)}\n"
                 f"WhatsApp Cliente: {seu_whatsapp}\n"
                 f"Data/Hora da consulta: {data_hora}"
             )
         else:
             st.warning("Não existem empresas com esses filtros.")
-            texto_msg = (
-                f"CNAE: {cnae_selecionado}\n"
-                f"Atividade: {atividade}\n"
-                f"CEP informado: {cep}\n"
-                f"DDD informado: {ddd_preferencia}\n"
-                f"Deseja: {preferencia}\n"
-                f"WhatsApp Cliente: {seu_whatsapp}\n"
-                f"Data/Hora da consulta: {datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}\n\n"
-                f"Não existem empresas com esses filtros.\n\n"
-                f"Podemos refinar a busca por região, cidade ou contatos válidos."
-            )
+            texto_msg = "Nenhum resultado encontrado."
 
         cursor.close()
         db.close()
