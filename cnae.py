@@ -1,124 +1,152 @@
 import streamlit as st
 import pandas as pd
-import urllib.parse
+import urllib
 import mysql.connector
 import unicodedata
 
-# Função normalizar
+# 🔧 FUNÇÃO PARA NORMALIZAR TEXTO (remove acento)
 def normalizar(texto):
-    if texto:
-        texto = str(texto).lower().strip()
-        return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
-    return ''
+    texto = texto.lower().strip()
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
 
-st.title("🔎 Buscador CNAE")
+# --- PARTE 1: BUSCA DE CNAE ---
+st.title("🔎 Buscador de CNAE")
+busca = st.text_input("Digite o CNAE ou palavras ou descrição para a busca:")
 
-# 1. Seleção CNAE
-st.header("1️⃣ Escolha o CNAE")
-cnae = st.selectbox("Selecione CNAE:", ["6201", "5611", "4711", "6612", "4619"])
+if busca:
+    busca_limpa = normalizar(busca)
+    # 🔥 BASE DE CNAE
+    tabela_cnae = [
+        {"cnae": "6612-6/01", "desc": "Corretoras de títulos e valores mobiliários"},
+        {"cnae": "6201-5/01", "desc": "Desenvolvimento de programas de computador"},
+        {"cnae": "4711-3/02", "desc": "Supermercados"},
+        {"cnae": "5611-2/01", "desc": "Restaurantes"},
+        {"cnae": "4619-2/00", "desc": "Representantes comerciais e agentes do comércio de mercadorias em geral não especializado"},
+    ]
 
-# 2. Filtros
-st.header("2️⃣ Filtros")
-col1, col2 = st.columns(2)
-with col1:
-    cep = st.text_input("CEP:", value="12230")
-    cep = ''.join(filter(str.isdigit, cep))
-with col2:
-    ddd = st.text_input("DDD:", value="12")
-    ddd = ''.join(filter(str.isdigit, ddd))
+    resultados_filtrados = [
+        item for item in tabela_cnae
+        if busca_limpa in normalizar(item["desc"]) or busca_limpa in "".join(filter(str.isdigit, item["cnae"]))
+    ]
 
-tipo = st.radio("Tipo de contato:", ["📧 Apenas E-mails", "📞 Apenas Telefones", "📧📞 Ambos"])
-whatsapp = st.text_input("Seu WhatsApp:", value="11999999999")
-
-# 3. Botão executar
-if st.button("🚀 BUSCAR E BAIXAR", type="primary"):
-    if len(cep) < 5 or len(ddd) < 2:
-        st.error("CEP e DDD inválidos!")
+    if resultados_filtrados:
+        resultado = pd.DataFrame({
+            "CNAE": [ "".join(filter(str.isdigit, item["cnae"])) for item in resultados_filtrados ],
+            "Descrição": [item["desc"] for item in resultados_filtrados]
+        })
+        cnae_selecionado = st.selectbox(
+            "Selecione o CNAE encontrado:",
+            resultado["CNAE"]
+        )
     else:
-        try:
-            # Conectar MySQL
-            conn = mysql.connector.connect(
+        st.warning("Nenhum CNAE encontrado para essa busca.")
+        resultado = pd.DataFrame()
+        cnae_selecionado = ""
+else:
+    resultado = pd.DataFrame()
+    cnae_selecionado = ""
+
+# --- PARTE 2: DADOS DO CLIENTE ---
+if busca and not resultado.empty:
+    st.divider()
+    st.subheader("📋 Informações Adicionais")
+    
+    cep = st.text_input("Digite CEP desejado (apenas números ou início):")
+    cep = "".join(filter(str.isdigit, cep))
+    
+    preferencia = st.radio(
+        "O que deseja receber no arquivo?",
+        ("Apenas E-mails", "Apenas Telefones", "E-mails + Telefones")
+    )
+    
+    # 🔧 MAPEAMENTO DE COLUNAS PARA O FILTRO DO CLIENTE
+    colunas_selecionadas = []
+    if preferencia == "Apenas E-mails":
+        colunas_selecionadas = ["E-mail"] # Ajuste o nome conforme seu banco
+    elif preferencia == "Apenas Telefones":
+        colunas_selecionadas = ["Telefone"]
+    else:
+        colunas_selecionadas = ["E-mail", "Telefone"]
+
+    seu_whatsapp = st.text_input("Seu WhatsApp com DDD (ex: 11999999999):")
+    seu_whatsapp = "".join(filter(str.isdigit, seu_whatsapp))
+    
+    ddd_preferencia = st.text_input("DDD da região (ex: 11):")
+    ddd_preferencia = "".join(filter(str.isdigit, ddd_preferencia))
+
+    # --- PARTE 3: ENVIO ---
+    if st.button("Finalizar e Gerar Mensagem"):
+        if len(cep) < 5:
+            st.warning("Digite pelo menos 5 números do CEP.")
+        elif len(seu_whatsapp) < 10:
+            st.warning("WhatsApp inválido.")
+        elif len(ddd_preferencia) < 2:
+            st.warning("DDD inválido.")
+        else:
+            # 🔧 CONEXÃO MYSQL LOCAL
+            db = mysql.connector.connect(
                 host="127.0.0.1",
-                user="root", 
+                user="root",
                 password="",
                 database="CNAE"
             )
-            
-            # Query específica por tipo
-            if "E-mails" in tipo:
-                query = f"""
-                    SELECT `Column 24` as email 
-                    FROM estabelecimento1 
-                    WHERE `Column 11` = '{cnae}' 
-                    AND `Column 18` LIKE '%{cep}%'
-                    AND `Column 24` IS NOT NULL 
-                    AND `Column 24` != ''
-                    AND (`Column 21` = '{ddd}' OR `Column 23` = '{ddd}')
-                    LIMIT 1000
-                """
-                nome_csv = f"emails_CNAE_{cnae}_CEP_{cep}.csv"
-            elif "Telefones" in tipo:
-                query = f"""
-                    SELECT `Column 21` as ddd1, `Column 23` as telefone1
-                    FROM estabelecimento1 
-                    WHERE `Column 11` = '{cnae}' 
-                    AND `Column 18` LIKE '%{cep}%'
-                    AND (`Column 21` = '{ddd}' OR `Column 23` = '{ddd}')
-                    LIMIT 1000
-                """
-                nome_csv = f"telefones_CNAE_{cnae}_CEP_{cep}.csv"
-            else:
-                query = f"""
-                    SELECT `Column 24` as email, 
-                           `Column 21` as ddd1, 
-                           `Column 23` as telefone1
-                    FROM estabelecimento1 
-                    WHERE `Column 11` = '{cnae}' 
-                    AND `Column 18` LIKE '%{cep}%'
-                    AND (`Column 21` = '{ddd}' OR `Column 23` = '{ddd}')
-                    LIMIT 1000
-                """
-                nome_csv = f"contatos_CNAE_{cnae}_CEP_{cep}.csv"
-            
-            # Executar
-            df = pd.read_sql(query, conn)
-            conn.close()
-            
-            if len(df) > 0:
-                st.success(f"✅ {len(df)} contatos encontrados!")
-                
-                # Preview
-                st.subheader("📋 Preview:")
-                st.dataframe(df.head(10))
-                
-                # Download
-                csv_data = df.to_csv(index=False, encoding='utf-8').encode('utf-8')
-                st.download_button(
-                    label=f"📥 DOWNLOAD CSV ({len(df)} linhas)",
-                    data=csv_data,
-                    file_name=nome_csv,
-                    mime='text/csv'
-                )
-                
-                # WhatsApp
-                msg = f"""✅ CNAE {cnae}
-CEP: {cep} | DDD: {ddd}
-📊 {len(df)} contatos
-{tipo}
-Cliente: {whatsapp}"""
-                
-                st.markdown(f"""
-                <a href="https://wa.me/5512981779669?text={urllib.parse.quote(msg)}" 
-                   target="_blank" style="background: #25D366; color: white; padding: 15px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; width: 100%; text-align: center; display: block;">
-                   📱 Enviar WhatsApp
-                </a>
-                """, unsafe_allow_html=True)
-                
-            else:
-                st.warning("❌ Nenhum contato encontrado")
-                
-        except Exception as e:
-            st.error(f"Erro: {e}")
+            cursor = db.cursor()
 
-st.markdown("---")
-st.caption("✅ Código completo - copia e cola")
+            # 🔎 TOTAL BRASIL
+            cursor.execute(
+                "SELECT COUNT(*) FROM estabelecimento1 WHERE `Column 11` = %s",
+                (cnae_selecionado,)
+            )
+            total_brasil = cursor.fetchone()[0]
+
+            # 🔎 COM FILTROS
+            cursor.execute("""
+                SELECT COUNT(*) FROM estabelecimento1 
+                WHERE `Column 11` = %s 
+                AND `Column 18` LIKE %s 
+                AND (`Column 21` = %s OR `Column 23` = %s)
+            """, (cnae_selecionado, cep + "%", ddd_preferencia, ddd_preferencia))
+            
+            total_filtro = cursor.fetchone()[0]
+
+            # 🎯 MENSAGEM FINAL (Mantendo sua estrutura original)
+            if total_filtro > 0:
+                texto_msg = (
+                    f"Novo Interesse de CNAE\n\n"
+                    f"CNAE: {cnae_selecionado}\n"
+                    f"CEP: {cep}\n"
+                    f"DDD: {ddd_preferencia}\n"
+                    f"Resultados encontrados: {total_filtro}\n"
+                    f"Deseja: {preferencia}\n"
+                    f"Colunas escolhidas: {', '.join(colunas_selecionadas)}\n"
+                    f"WhatsApp Cliente: {seu_whatsapp}"
+                )
+            else:
+                texto_msg = (
+                    f"CNAE: {cnae_selecionado}\n"
+                    f"CEP informado: {cep}\n"
+                    f"DDD informado: {ddd_preferencia}\n"
+                    f"WhatsApp Cliente: {seu_whatsapp}\n\n"
+                    f"Não existem empresas com esse CNAE com esses filtros.\n\n"
+                    f"Mas encontrei {total_brasil} empresas no Brasil com esse CNAE.\n\n"
+                    f"Vou preparar uma lista qualificada para você.\n"
+                    f"Podemos filtrar por região, cidade ou contatos válidos."
+                )
+
+            cursor.close()
+            db.close()
+
+            # 🔗 LINK WHATSAPP
+            msg_codificada = urllib.parse.quote(texto_msg, safe='', encoding='utf-8')
+            link_whatsapp = f"https://wa.me/5512981779669?text={msg_codificada}"
+
+            st.markdown(f"""
+                <a href="{link_whatsapp}" target="_blank">
+                    <button style="background-color: #25D366; color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px;">
+                        CLIQUE AQUI PARA ENVIAR NO WHATSAPP
+                    </button>
+                </a>
+            """, unsafe_allow_html=True)
