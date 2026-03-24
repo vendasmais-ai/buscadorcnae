@@ -9,7 +9,7 @@ import datetime
 try:
     df_lista = pd.read_csv("ListaCNAES.txt", sep=";", header=None, names=["CNAE", "Descrição"])
     st.markdown(
-    "<h3 style='text-align: center;'>📑 Lista de CNAEs disponíveis - Atualização 20/02/2026 - Listas de Domínio Público</h3>",
+    "<h3 style='text-align: center;'>📑 Lista de CNAEs disponíveis - Atualização 20/02/2026 Listas de Domínio Público</h3>",
     unsafe_allow_html=True
     )
     st.dataframe(df_lista)
