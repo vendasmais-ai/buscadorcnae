@@ -7,11 +7,11 @@ import datetime
 
 # --- MOSTRAR LISTA DE CNAEs NO INÍCIO ---
 try:
+    df_lista = pd.read_csv("ListaCNAES.txt", sep=";", header=None, names=["CNAE", "Descrição"])
     st.markdown(
     "<h3 style='text-align: center;'>📑 Lista de CNAEs disponíveis - Atualização 20/02/2026 - Listas de Domínio Público</h3>",
     unsafe_allow_html=True
     )
-    st.subheader("📑 Lista de CNAEs disponíveis - Atualização 20/02/2026 - Listas de Domínio Público")
     st.dataframe(df_lista)
 except Exception as e:
     st.warning("Não foi possível carregar a lista de CNAEs. Verifique se o arquivo ListaCNAES.txt está na pasta.")
