@@ -7,6 +7,10 @@ import datetime
 
 # --- MOSTRAR LISTA DE CNAEs NO INÍCIO ---
 try:
+    st.markdown(
+    "<h3 style='text-align: center;'>📑 Lista de CNAEs disponíveis - Atualização 20/02/2026 - Listas de Domínio Público</h3>",
+    unsafe_allow_html=True
+    )
     df_lista = pd.read_csv("ListaCNAES.txt", sep=";", header=None, names=["CNAE", "Descrição"])
     st.subheader("📑 Lista de CNAEs disponíveis - Atualização 20/02/2026 - Listas de Domínio Público")
     st.dataframe(df_lista)
